@@ -7,12 +7,18 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+
+import com.portfolio.Stackfolio.exception.NotFoundException;
 
 import java.io.IOException;
 import java.net.URI;
@@ -20,6 +26,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Service
 public class R2StorageService {
@@ -38,6 +45,9 @@ public class R2StorageService {
             "image/gif", "gif"
     );
 
+    private static final Pattern PROFILE_OBJECT_KEY =
+            Pattern.compile("^profiles/[0-9]+/[A-Za-z0-9._-]+$");
+
     private final R2Properties properties;
     private volatile S3Client s3Client;
 
@@ -45,7 +55,27 @@ public class R2StorageService {
         this.properties = properties;
     }
 
+    public ResponseInputStream<GetObjectResponse> getObject(String objectKey) {
+        if (!PROFILE_OBJECT_KEY.matcher(objectKey).matches()) {
+            throw new NotFoundException("Media not found");
+        }
+
+        try {
+            return requireClient().getObject(GetObjectRequest.builder()
+                    .bucket(properties.getBucket())
+                    .key(objectKey)
+                    .build());
+        } catch (NoSuchKeyException exception) {
+            throw new NotFoundException("Media not found");
+        } catch (NotFoundException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new IllegalStateException("Failed to fetch media from R2", exception);
+        }
+    }
+
     public String uploadProfileImage(Long userId, MultipartFile file) {
+        ensureUploadConfigured();
         S3Client client = requireClient();
         validateImage(file);
 
@@ -98,7 +128,7 @@ public class R2StorageService {
         if (!properties.isConfigured()) {
             throw new IllegalStateException(
                     "Cloudflare R2 is not configured. Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, "
-                            + "R2_SECRET_ACCESS_KEY, R2_BUCKET, and R2_PUBLIC_BASE_URL."
+                            + "R2_SECRET_ACCESS_KEY, and R2_BUCKET."
             );
         }
 
@@ -125,6 +155,15 @@ public class R2StorageService {
                         .build();
             }
             return s3Client;
+        }
+    }
+
+    private void ensureUploadConfigured() {
+        if (!properties.hasPublicBaseUrl()) {
+            throw new IllegalStateException(
+                    "R2_PUBLIC_BASE_URL is not set. Use your API media base, e.g. "
+                            + "https://stackfolio-backend.onrender.com/api/media"
+            );
         }
     }
 

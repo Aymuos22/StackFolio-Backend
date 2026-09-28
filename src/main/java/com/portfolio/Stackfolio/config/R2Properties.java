@@ -64,8 +64,11 @@ public class R2Properties {
         return isPresent(accountId)
                 && isPresent(accessKeyId)
                 && isPresent(secretAccessKey)
-                && isPresent(bucket)
-                && isPresent(publicBaseUrl);
+                && isPresent(bucket);
+    }
+
+    public boolean hasPublicBaseUrl() {
+        return isPresent(publicBaseUrl);
     }
 
     private boolean isPresent(String value) {
