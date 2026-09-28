@@ -82,6 +82,7 @@ public class PortfolioService {
                 portfolio.getPublicEmail(),
                 portfolio.getLinkedinUrl(),
                 portfolio.getGithubUrl(),
+                portfolio.getProfileImageUrl(),
                 portfolio.getTheme(),
                 portfolio.getPrimaryColor(),
                 portfolio.getSecondaryColor(),

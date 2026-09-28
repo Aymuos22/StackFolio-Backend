@@ -17,6 +17,7 @@ public class PortfolioPublicResponse {
     private String publicEmail;
     private String linkedinUrl;
     private String githubUrl;
+    private String profileImageUrl;
     private String theme;
     private String primaryColor;
     private String secondaryColor;

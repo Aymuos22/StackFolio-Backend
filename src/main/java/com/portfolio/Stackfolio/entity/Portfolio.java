@@ -46,6 +46,9 @@ public class Portfolio {
     @Column(name = "github_url", length = 500)
     private String githubUrl;
 
+    @Column(name = "profile_image_url", length = 500)
+    private String profileImageUrl;
+
     @Column(length = 100)
     private String theme;
 

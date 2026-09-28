@@ -3,6 +3,7 @@ package com.portfolio.Stackfolio.controller;
 import com.portfolio.Stackfolio.dto.portfolio.CertificationRequest;
 import com.portfolio.Stackfolio.dto.portfolio.CustomLinkRequest;
 import com.portfolio.Stackfolio.dto.portfolio.ExperienceRequest;
+import com.portfolio.Stackfolio.dto.portfolio.ImageUploadResponse;
 import com.portfolio.Stackfolio.dto.portfolio.PortfolioPublicResponse;
 import com.portfolio.Stackfolio.dto.portfolio.ProfessionalSummaryRequest;
 import com.portfolio.Stackfolio.dto.portfolio.ProjectRequest;
@@ -10,12 +11,14 @@ import com.portfolio.Stackfolio.dto.portfolio.SectionResponse;
 import com.portfolio.Stackfolio.dto.portfolio.TechnicalSkillRequest;
 import com.portfolio.Stackfolio.service.PortfolioSectionService;
 import com.portfolio.Stackfolio.service.PortfolioService;
+import com.portfolio.Stackfolio.service.ProfileImageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -27,7 +30,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/me/portfolio")
@@ -37,13 +42,16 @@ public class PortfolioSectionController {
 
     private final PortfolioSectionService portfolioSectionService;
     private final PortfolioService portfolioService;
+    private final ProfileImageService profileImageService;
 
     public PortfolioSectionController(
             PortfolioSectionService portfolioSectionService,
-            PortfolioService portfolioService
+            PortfolioService portfolioService,
+            ProfileImageService profileImageService
     ) {
         this.portfolioSectionService = portfolioSectionService;
         this.portfolioService = portfolioService;
+        this.profileImageService = profileImageService;
     }
 
     @GetMapping
@@ -65,6 +73,26 @@ public class PortfolioSectionController {
         return ResponseEntity.ok(
                 portfolioSectionService.upsertSummary(userId(authentication), request)
         );
+    }
+
+    @PostMapping(value = "/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Upload or replace the authenticated user's profile image (Cloudflare R2)")
+    public ResponseEntity<ImageUploadResponse> uploadProfileImage(
+            @RequestPart("file") MultipartFile file,
+            @Parameter(hidden = true) Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                profileImageService.uploadProfileImage(userId(authentication), file)
+        );
+    }
+
+    @DeleteMapping("/image")
+    @Operation(summary = "Delete the authenticated user's profile image")
+    public ResponseEntity<Void> deleteProfileImage(
+            @Parameter(hidden = true) Authentication authentication
+    ) {
+        profileImageService.deleteProfileImage(userId(authentication));
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/projects")
