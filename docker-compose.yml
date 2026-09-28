@@ -1,0 +1,16 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: stackfolio-api:local
+    container_name: stackfolio-api
+    env_file:
+      - .env
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      SERVER_PORT: ${SERVER_PORT:-8080}
+      SPRING_DATA_REDIS_USERNAME: ${UPSTASH_REDIS_USERNAME:-default}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    restart: unless-stopped
