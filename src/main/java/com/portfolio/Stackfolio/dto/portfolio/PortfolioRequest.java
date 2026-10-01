@@ -1,5 +1,7 @@
 package com.portfolio.Stackfolio.dto.portfolio;
 
+import com.portfolio.Stackfolio.entity.PortfolioTheme;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -38,8 +40,12 @@ public class PortfolioRequest {
     @Size(max = 500, message = "GitHub URL must be at most 500 characters")
     private String githubUrl;
 
-    @Size(max = 100, message = "Theme must be at most 100 characters")
-    private String theme;
+    @Schema(
+            description = "Public portfolio layout theme",
+            allowableValues = {"comic", "minimalist", "dark-tech"},
+            example = "comic"
+    )
+    private PortfolioTheme theme;
 
     @Pattern(
             regexp = "^$|^#[0-9a-fA-F]{6}$",

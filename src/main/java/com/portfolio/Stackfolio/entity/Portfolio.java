@@ -49,8 +49,9 @@ public class Portfolio {
     @Column(name = "profile_image_url", length = 500)
     private String profileImageUrl;
 
-    @Column(length = 100)
-    private String theme;
+    @Convert(converter = PortfolioThemeConverter.class)
+    @Column(nullable = false, length = 20)
+    private PortfolioTheme theme = PortfolioTheme.COMIC;
 
     @Column(name = "primary_color", length = 20)
     private String primaryColor;

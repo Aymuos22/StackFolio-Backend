@@ -1,5 +1,6 @@
 package com.portfolio.Stackfolio.dto.portfolio;
 
+import com.portfolio.Stackfolio.entity.PortfolioTheme;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -18,7 +19,7 @@ public class PortfolioPublicResponse {
     private String linkedinUrl;
     private String githubUrl;
     private String profileImageUrl;
-    private String theme;
+    private PortfolioTheme theme;
     private String primaryColor;
     private String secondaryColor;
     private String summary;

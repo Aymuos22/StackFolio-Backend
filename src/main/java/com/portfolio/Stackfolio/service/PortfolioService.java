@@ -12,6 +12,7 @@ import com.portfolio.Stackfolio.entity.Certification;
 import com.portfolio.Stackfolio.entity.CustomLink;
 import com.portfolio.Stackfolio.entity.Experience;
 import com.portfolio.Stackfolio.entity.Portfolio;
+import com.portfolio.Stackfolio.entity.PortfolioTheme;
 import com.portfolio.Stackfolio.entity.ProfessionalSummary;
 import com.portfolio.Stackfolio.entity.Project;
 import com.portfolio.Stackfolio.entity.TechnicalSkill;
@@ -203,7 +204,7 @@ public class PortfolioService {
         portfolio.setPublicEmail(request.getPublicEmail());
         portfolio.setLinkedinUrl(request.getLinkedinUrl());
         portfolio.setGithubUrl(request.getGithubUrl());
-        portfolio.setTheme(request.getTheme());
+        portfolio.setTheme(resolveTheme(request.getTheme()));
         portfolio.setPrimaryColor(request.getPrimaryColor());
         portfolio.setSecondaryColor(request.getSecondaryColor());
 
@@ -218,6 +219,7 @@ public class PortfolioService {
         return new PortfolioResponse(
                 savedPortfolio.getId(),
                 savedPortfolio.getSlug(),
+                savedPortfolio.getTheme(),
                 "Portfolio created successfully"
         );
     }
@@ -243,7 +245,7 @@ public class PortfolioService {
         existingPortfolio.setPublicEmail(request.getPublicEmail());
         existingPortfolio.setLinkedinUrl(request.getLinkedinUrl());
         existingPortfolio.setGithubUrl(request.getGithubUrl());
-        existingPortfolio.setTheme(request.getTheme());
+        existingPortfolio.setTheme(resolveTheme(request.getTheme()));
         existingPortfolio.setPrimaryColor(request.getPrimaryColor());
         existingPortfolio.setSecondaryColor(request.getSecondaryColor());
 
@@ -255,7 +257,12 @@ public class PortfolioService {
         return new PortfolioResponse(
                 savedPortfolio.getId(),
                 savedPortfolio.getSlug(),
+                savedPortfolio.getTheme(),
                 "Portfolio updated successfully"
         );
+    }
+
+    private PortfolioTheme resolveTheme(PortfolioTheme theme) {
+        return theme == null ? PortfolioTheme.COMIC : theme;
     }
 }

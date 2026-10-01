@@ -1,6 +1,7 @@
 package com.portfolio.Stackfolio.exception;
 
 import com.portfolio.Stackfolio.dto.error.ApiErrorResponse;
+import com.portfolio.Stackfolio.entity.PortfolioTheme;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -113,12 +114,28 @@ public class GlobalExceptionHandler {
             HttpMessageNotReadableException exception,
             HttpServletRequest request
     ) {
+        String message = resolveUnreadableMessage(exception);
         return buildErrorResponse(
                 HttpStatus.BAD_REQUEST,
-                "Request body is missing or invalid",
+                message,
                 request.getRequestURI(),
                 null
         );
+    }
+
+    private String resolveUnreadableMessage(HttpMessageNotReadableException exception) {
+        Throwable cause = exception.getMostSpecificCause();
+        if (cause != null && cause.getMessage() != null
+                && cause.getMessage().contains(PortfolioTheme.ALLOWED_VALUES_MESSAGE)) {
+            return PortfolioTheme.ALLOWED_VALUES_MESSAGE;
+        }
+
+        String fullMessage = exception.getMessage();
+        if (fullMessage != null && fullMessage.contains(PortfolioTheme.ALLOWED_VALUES_MESSAGE)) {
+            return PortfolioTheme.ALLOWED_VALUES_MESSAGE;
+        }
+
+        return "Request body is missing or invalid";
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
