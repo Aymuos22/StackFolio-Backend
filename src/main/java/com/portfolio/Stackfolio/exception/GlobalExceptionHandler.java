@@ -147,6 +147,20 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(AiServiceException.class)
+    public ResponseEntity<ApiErrorResponse> handleAiService(
+            AiServiceException exception,
+            HttpServletRequest request
+    ) {
+        LOGGER.error("AI service error while handling {}", request.getRequestURI(), exception);
+        return buildErrorResponse(
+                HttpStatus.BAD_GATEWAY,
+                exception.getMessage(),
+                request.getRequestURI(),
+                null
+        );
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleUnexpected(
             Exception exception,

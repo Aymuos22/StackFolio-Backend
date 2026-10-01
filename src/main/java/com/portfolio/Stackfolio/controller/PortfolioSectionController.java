@@ -1,5 +1,7 @@
 package com.portfolio.Stackfolio.controller;
 
+import com.portfolio.Stackfolio.dto.ai.PortfolioSuggestRequest;
+import com.portfolio.Stackfolio.dto.ai.PortfolioSuggestResponse;
 import com.portfolio.Stackfolio.dto.portfolio.CertificationRequest;
 import com.portfolio.Stackfolio.dto.portfolio.CustomLinkRequest;
 import com.portfolio.Stackfolio.dto.portfolio.ExperienceRequest;
@@ -11,6 +13,7 @@ import com.portfolio.Stackfolio.dto.portfolio.SectionResponse;
 import com.portfolio.Stackfolio.dto.portfolio.TechnicalSkillRequest;
 import com.portfolio.Stackfolio.service.PortfolioSectionService;
 import com.portfolio.Stackfolio.service.PortfolioService;
+import com.portfolio.Stackfolio.service.PortfolioSuggestService;
 import com.portfolio.Stackfolio.service.ProfileImageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -43,15 +46,29 @@ public class PortfolioSectionController {
     private final PortfolioSectionService portfolioSectionService;
     private final PortfolioService portfolioService;
     private final ProfileImageService profileImageService;
+    private final PortfolioSuggestService portfolioSuggestService;
 
     public PortfolioSectionController(
             PortfolioSectionService portfolioSectionService,
             PortfolioService portfolioService,
-            ProfileImageService profileImageService
+            ProfileImageService profileImageService,
+            PortfolioSuggestService portfolioSuggestService
     ) {
         this.portfolioSectionService = portfolioSectionService;
         this.portfolioService = portfolioService;
         this.profileImageService = profileImageService;
+        this.portfolioSuggestService = portfolioSuggestService;
+    }
+
+    @PostMapping("/suggest")
+    @Operation(summary = "Suggest a full portfolio draft from free-form text using AI")
+    public ResponseEntity<PortfolioSuggestResponse> suggestPortfolio(
+            @RequestBody @Valid PortfolioSuggestRequest request,
+            @Parameter(hidden = true) Authentication authentication
+    ) {
+        // Ensure caller is authenticated (JWT required); no per-user persistence.
+        userId(authentication);
+        return ResponseEntity.ok(portfolioSuggestService.suggest(request.getText()));
     }
 
     @GetMapping
