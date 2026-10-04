@@ -1,0 +1,39 @@
+# Vercel Fluid Compute / container image for StackFolio Spring Boot API.
+# Keeps the existing Render Dockerfile (Java 25) untouched.
+# Compiles to Java 21 bytecode so the image runs on a Java 21 JRE.
+
+FROM eclipse-temurin:21-jdk AS build
+
+WORKDIR /workspace
+
+COPY .mvn/ .mvn/
+COPY mvnw pom.xml ./
+RUN chmod +x mvnw \
+    && ./mvnw -DskipTests -Djava.version=21 dependency:go-offline
+
+COPY src/ src/
+RUN ./mvnw -DskipTests -Djava.version=21 package \
+    && JAR="$(ls target/*.jar | grep -v '\.original$' | head -n 1)" \
+    && cp "$JAR" /workspace/app.jar
+
+FROM eclipse-temurin:21-jre
+
+WORKDIR /app
+
+RUN groupadd --system stackfolio \
+    && useradd --system --gid stackfolio --home-dir /app --shell /usr/sbin/nologin stackfolio
+
+COPY --from=build /workspace/app.jar app.jar
+
+ENV SPRING_PROFILES_ACTIVE=prod
+# Faster cold starts for Vercel's ~30s container readiness window.
+ENV JAVA_OPTS="-XX:TieredStopAtLevel=1 -Xms128m -Xmx512m"
+ENV SPRING_MAIN_LAZY_INITIALIZATION=true
+
+# Vercel injects PORT at runtime; Spring Boot reads server.port=${PORT:8080}.
+# Do not hardcode SERVER_PORT here so Vercel's PORT wins.
+USER stackfolio
+
+EXPOSE 8080
+
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -Dspring.main.lazy-initialization=${SPRING_MAIN_LAZY_INITIALIZATION:-true} -jar app.jar"]

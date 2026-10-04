@@ -1,0 +1,13 @@
+# Keep CLI uploads under Vercel's 100MB file limit.
+# The container image builds the JAR inside Docker.
+target/
+.venv-r2/
+.idea/
+.vscode/
+.git/
+.env
+.env.*
+!.env.example
+*.iml
+HELP.md
+scripts/
