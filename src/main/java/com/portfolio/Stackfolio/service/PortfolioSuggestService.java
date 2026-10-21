@@ -2,9 +2,13 @@ package com.portfolio.Stackfolio.service;
 
 import com.portfolio.Stackfolio.dto.ai.PortfolioSuggestResponse;
 import com.portfolio.Stackfolio.exception.AiServiceException;
+import com.portfolio.Stackfolio.exception.TooManyRequestsException;
+import com.openai.errors.RateLimitException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -23,30 +27,85 @@ public class PortfolioSuggestService {
             """;
 
     private final ChatClient chatClient;
+    private final ChatClient fallbackChatClient;
 
-    public PortfolioSuggestService(ChatClient.Builder chatClientBuilder) {
-        this.chatClient = chatClientBuilder.build();
+    public PortfolioSuggestService(
+            ChatClient.Builder chatClientBuilder,
+            @Value("${stackfolio.ai.fallback-model:openai/gpt-oss-20b}") String fallbackModel,
+            @Value("${stackfolio.ai.fallback-max-completion-tokens:4096}") int fallbackMaxCompletionTokens
+    ) {
+        // Fail over immediately on a quota rejection instead of repeatedly sending
+        // the same request that exceeds the primary model's token allowance.
+        this.chatClient = chatClientBuilder.clone()
+                .defaultOptions(OpenAiChatOptions.builder().maxRetries(0))
+                .build();
+        this.fallbackChatClient = fallbackModel == null || fallbackModel.isBlank()
+                ? null
+                : chatClientBuilder.clone()
+                        .defaultOptions(OpenAiChatOptions.builder()
+                                .model(fallbackModel)
+                                .maxCompletionTokens(fallbackMaxCompletionTokens)
+                                .maxRetries(0))
+                        .build();
     }
 
     public PortfolioSuggestResponse suggest(String text) {
         try {
-            PortfolioSuggestResponse response = chatClient.prompt()
-                    .system(SYSTEM_PROMPT)
-                    .user(text)
-                    .call()
-                    .entity(PortfolioSuggestResponse.class);
-
-            if (response == null) {
-                throw new AiServiceException("AI returned an empty portfolio suggestion");
-            }
-
-            return normalize(response);
-        } catch (AiServiceException exception) {
-            throw exception;
+            return generate(chatClient, text);
         } catch (Exception exception) {
-            LOGGER.error("Failed to generate portfolio suggestion via Groq", exception);
-            throw new AiServiceException("Failed to generate portfolio suggestion", exception);
+            if (!isRateLimited(exception)) {
+                throw generationFailure(exception);
+            }
+            if (fallbackChatClient == null) {
+                throw quotaExceeded();
+            }
+            LOGGER.warn("Primary portfolio AI model is rate limited; trying the configured fallback model");
         }
+
+        try {
+            return generate(fallbackChatClient, text);
+        } catch (Exception exception) {
+            if (isRateLimited(exception)) {
+                throw quotaExceeded();
+            }
+            throw generationFailure(exception);
+        }
+    }
+
+    private PortfolioSuggestResponse generate(ChatClient client, String text) {
+        PortfolioSuggestResponse response = client.prompt()
+                .system(SYSTEM_PROMPT)
+                .user(text)
+                .call()
+                .entity(PortfolioSuggestResponse.class);
+
+        if (response == null) {
+            throw new AiServiceException("AI returned an empty portfolio suggestion");
+        }
+
+        return normalize(response);
+    }
+
+    private boolean isRateLimited(Throwable exception) {
+        for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+            if (cause instanceof RateLimitException) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private TooManyRequestsException quotaExceeded() {
+        return new TooManyRequestsException(
+                "AI provider quota is currently exhausted. Please retry in a minute."
+        );
+    }
+
+    private AiServiceException generationFailure(Exception exception) {
+        LOGGER.error("Failed to generate portfolio suggestion via Groq", exception);
+        return exception instanceof AiServiceException aiException
+                ? aiException
+                : new AiServiceException("Failed to generate portfolio suggestion", exception);
     }
 
     private PortfolioSuggestResponse normalize(PortfolioSuggestResponse response) {
